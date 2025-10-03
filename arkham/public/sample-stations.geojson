@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 1,
+        "name": "Station Alpha",
+        "capacity": 50,
+        "available": 32
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-74.0059, 40.7127]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 2,
+        "name": "Station Beta",
+        "capacity": 40,
+        "available": 15
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9851, 40.7590]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 3,
+        "name": "Station Gamma",
+        "capacity": 60,
+        "available": 45
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9776, 40.7615]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 4,
+        "name": "Station Delta",
+        "capacity": 35,
+        "available": 8
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9934, 40.7506]
+      }
+    }
+  ]
+}

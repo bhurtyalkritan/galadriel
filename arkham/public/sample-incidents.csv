@@ -1,0 +1,11 @@
+id,name,severity,lat,lng,type,status
+1,Incident Alpha,4,40.7128,-74.0060,Fire,Active
+2,Incident Beta,2,40.7589,-73.9851,Medical,Resolved
+3,Incident Gamma,5,40.7614,-73.9776,Security,Active
+4,Incident Delta,3,40.7505,-73.9934,Traffic,Pending
+5,Incident Epsilon,1,40.7282,-73.9942,Maintenance,Resolved
+6,Incident Zeta,4,40.7831,-73.9712,Fire,Active
+7,Incident Eta,3,40.7484,-73.9857,Medical,Pending
+8,Incident Theta,5,40.7549,-73.9840,Security,Active
+9,Incident Iota,2,40.7648,-73.9808,Traffic,Resolved
+10,Incident Kappa,4,40.7516,-73.9755,Fire,Active

@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-black text-text font-sans;
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 25%, #000000 50%, #2a2a2a 75%, #000000 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 20s ease infinite;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes dash {
+    to {
+      stroke-dashoffset: -20;
+    }
+  }
+}
+
+@layer components {
+  .node-card {
+    @apply border border-border/30 rounded-lg p-4 shadow-lg backdrop-blur-sm;
+    background: rgba(21, 23, 32, 0.9);
+    border: 1px solid rgba(111, 163, 255, 0.2);
+  }
+  
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-md transition-all duration-200 hover:shadow-lg hover:shadow-accent/30;
+  }
+  
+  .btn-secondary {
+    @apply bg-card/80 backdrop-blur-sm hover:bg-card text-text px-4 py-2 rounded-md border border-border/30 transition-all duration-200 hover:border-accent/30;
+  }
+  
+  .input-field {
+    @apply bg-card/50 backdrop-blur-sm border border-border/30 text-text px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all duration-200;
+  }
+}
