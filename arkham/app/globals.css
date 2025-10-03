@@ -25,6 +25,13 @@
       stroke-dashoffset: -20;
     }
   }
+
+  /* Smooth hardware-accelerated transforms */
+  .node-card {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
 }
 
 @layer components {
@@ -32,6 +39,7 @@
     @apply border border-border/30 rounded-lg p-4 shadow-lg backdrop-blur-sm;
     background: rgba(21, 23, 32, 0.9);
     border: 1px solid rgba(111, 163, 255, 0.2);
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
   }
   
   .btn-primary {

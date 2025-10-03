@@ -8,7 +8,7 @@ import { generateId } from '@/lib/utils';
 
 export function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [connecting, setConnecting] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<{ nodeId: string; position: { x: number; y: number } } | null>(null);
   const [tempLine, setTempLine] = useState<{ x: number; y: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState<{ x: number; y: number } | null>(null);
@@ -23,34 +23,45 @@ export function Canvas() {
     addNode,
     updateNode,
     addConnector,
+    removeNode,
     setSelectedNode,
     setSelectedConnector,
     setCanvasOffset,
     setCanvasScale,
   } = useCanvasStore();
 
+  useEffect(() => {
+    console.log('Canvas render - Nodes:', nodes.length, nodes);
+    console.log('Canvas offset:', canvasOffset);
+    console.log('Canvas scale:', canvasScale);
+    nodes.forEach((node, i) => {
+      console.log(`Node ${i}:`, node.type, 'at position', node.position);
+    });
+  }, [nodes, canvasOffset, canvasScale]);
+
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === canvasRef.current) {
-      setSelectedNode(null);
-      setSelectedConnector(null);
-      setConnecting(null);
-      setTempLine(null);
-    }
+    const target = e.target as HTMLElement;
+    if (target.closest('.node-card') || target.closest('button')) return;
+    
+    setSelectedNode(null);
+    setSelectedConnector(null);
+    setConnecting(null);
+    setTempLine(null);
   }, [setSelectedNode, setSelectedConnector]);
 
   const handleNodePositionChange = useCallback((id: string, position: { x: number; y: number }) => {
     updateNode(id, { position });
   }, [updateNode]);
 
-  const handleStartConnection = useCallback((nodeId: string) => {
-    setConnecting(nodeId);
+  const handleStartConnection = useCallback((nodeId: string, position: { x: number; y: number }) => {
+    setConnecting({ nodeId, position });
   }, []);
 
   const handleEndConnection = useCallback((nodeId: string) => {
-    if (connecting && connecting !== nodeId) {
+    if (connecting && connecting.nodeId !== nodeId) {
       const newConnector = {
         id: generateId(),
-        fromNode: connecting,
+        fromNode: connecting.nodeId,
         toNode: nodeId,
         createdAt: new Date().toISOString(),
       };
@@ -64,11 +75,29 @@ export function Canvas() {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
+    const worldX = (e.clientX - rect.left - canvasOffset.x) / canvasScale;
+    const worldY = (e.clientY - rect.top - canvasOffset.y) / canvasScale;
+
     if (connecting) {
-      setTempLine({
-        x: (e.clientX - rect.left - canvasOffset.x) / canvasScale,
-        y: (e.clientY - rect.top - canvasOffset.y) / canvasScale,
+      // Check if hovering over any input port
+      const targetNode = nodes.find(n => {
+        if (n.id === connecting.nodeId || !n.inputs || n.inputs.length === 0) return false;
+        const portX = n.position.x;
+        const portY = n.position.y + 50;
+        const distance = Math.sqrt(Math.pow(worldX - portX, 2) + Math.pow(worldY - portY, 2));
+        return distance < 30; // Snap distance
       });
+
+      if (targetNode) {
+        // Snap to port
+        setTempLine({ 
+          x: targetNode.position.x, 
+          y: targetNode.position.y + 50,
+          snapped: true 
+        } as any);
+      } else {
+        setTempLine({ x: worldX, y: worldY, snapped: false } as any);
+      }
     }
 
     if (isPanning && lastPanPoint && !connecting) {
@@ -82,10 +111,13 @@ export function Canvas() {
       
       setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
-  }, [connecting, isPanning, lastPanPoint, canvasOffset, canvasScale, setCanvasOffset]);
+  }, [connecting, isPanning, lastPanPoint, canvasOffset, canvasScale, nodes, setCanvasOffset]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.target === canvasRef.current && e.button === 0) {
+    const target = e.target as HTMLElement;
+    if (target.closest('.node-card') || target.closest('button')) return;
+    
+    if (e.button === 0) {
       setIsPanning(true);
       setLastPanPoint({ x: e.clientX, y: e.clientY });
       e.preventDefault();
@@ -95,7 +127,16 @@ export function Canvas() {
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
     setLastPanPoint(null);
-  }, []);
+    
+    // Clear connection state if releasing without hitting a port
+    if (connecting) {
+      // Small delay to allow port mouseup handlers to fire first
+      setTimeout(() => {
+        setConnecting(null);
+        setTempLine(null);
+      }, 50);
+    }
+  }, [connecting]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
@@ -161,14 +202,20 @@ export function Canvas() {
     if (e.key === 'Escape') {
       setConnecting(null);
       setTempLine(null);
+      setSelectedNode(null);
+      setSelectedConnector(null);
     } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       resetView();
     } else if (e.key === '1' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       fitToNodes();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNode) {
+      e.preventDefault();
+      removeNode(selectedNode);
+      setSelectedNode(null);
     }
-  }, [resetView, fitToNodes]);
+  }, [resetView, fitToNodes, selectedNode, removeNode, setSelectedNode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -186,7 +233,7 @@ export function Canvas() {
   }, [handleWheel, handleKeyDown, handleMouseUp]);
 
   return (
-    <div className="flex-1 relative overflow-hidden">
+    <div className="flex-1 relative h-full w-full">
       <div
         ref={canvasRef}
         className={`w-full h-full relative ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -195,10 +242,12 @@ export function Canvas() {
         onMouseDown={handleMouseDown}
       >
         <div
-          className="absolute inset-0"
+          className="absolute"
           style={{
             transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
             transformOrigin: '0 0',
+            width: '10000px',
+            height: '10000px',
           }}
         >
           {/* Connectors */}
@@ -224,8 +273,12 @@ export function Canvas() {
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
             >
               <defs>
+                <linearGradient id="temp-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor={(tempLine as any).snapped ? "#10b981" : "#8b5cf6"} stopOpacity="0.9" />
+                </linearGradient>
                 <filter id="temp-glow">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                   <feMerge>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
@@ -233,4 +286,73 @@ export function Canvas() {
                 </filter>
               </defs>
               <path
-                d={`M ${(nodes.find(n => n.id === connecting)?.position.x || 0) + 200} ${(nodes.find(n => n.id === connecting)?.position.y
+                d={`M ${connecting.position.x + 200} ${connecting.position.y + 50} Q ${(connecting.position.x + 200 + tempLine.x) / 2} ${connecting.position.y + 50}, ${(connecting.position.x + 200 + tempLine.x) / 2} ${(connecting.position.y + 50 + tempLine.y) / 2} T ${tempLine.x} ${tempLine.y}`}
+                stroke="url(#temp-gradient)"
+                strokeWidth={(tempLine as any).snapped ? "4" : "3"}
+                fill="none"
+                filter="url(#temp-glow)"
+                strokeLinecap="round"
+              />
+              <circle
+                cx={tempLine.x}
+                cy={tempLine.y}
+                r={(tempLine as any).snapped ? "8" : "6"}
+                fill={(tempLine as any).snapped ? "#10b981" : "#8b5cf6"}
+                filter="url(#temp-glow)"
+                className={(tempLine as any).snapped ? "animate-pulse" : ""}
+              />
+            </svg>
+          )}
+
+          {/* Nodes */}
+          {nodes.map((node) => (
+            <NodeCard
+              key={node.id}
+              node={node}
+              selected={selectedNode === node.id}
+              connecting={connecting?.nodeId === node.id}
+              onSelect={setSelectedNode}
+              onPositionChange={handleNodePositionChange}
+              onStartConnection={handleStartConnection}
+              onEndConnection={handleEndConnection}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Canvas Controls */}
+      <div className="absolute top-4 right-20 flex flex-col gap-2 z-10">
+        <div className="bg-card/80 backdrop-blur-sm border border-border/30 rounded-lg p-2 text-xs text-text-subtle">
+          Nodes: {nodes.length} | Zoom: {Math.round(canvasScale * 100)}%
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={resetView}
+            className="bg-card/80 backdrop-blur-sm border border-border/30 text-text hover:text-accent px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card text-xs"
+            title="Reset view (Ctrl+0)"
+          >
+            Reset
+          </button>
+          <button
+            onClick={fitToNodes}
+            className="bg-card/80 backdrop-blur-sm border border-border/30 text-text hover:text-accent px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card text-xs"
+            title="Fit to nodes (Ctrl+1)"
+            disabled={nodes.length === 0}
+          >
+            Fit All
+          </button>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="absolute bottom-4 right-4 bg-card/80 backdrop-blur-sm border border-border/30 rounded-lg p-3 text-xs text-text-subtle max-w-xs z-10">
+        <div className="font-medium mb-1">Navigation:</div>
+        <div>• Mouse wheel: Zoom in/out</div>
+        <div>• Click + drag: Pan around</div>
+        <div>• Ctrl+0: Reset view</div>
+        <div>• Ctrl+1: Fit all nodes</div>
+        <div>• Delete/Backspace: Remove selected node</div>
+      </div>
+    </div>
+  );
+}

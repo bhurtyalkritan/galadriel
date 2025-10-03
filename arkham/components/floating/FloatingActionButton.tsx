@@ -7,11 +7,7 @@ import { generateId } from '@/lib/utils';
 
 export function FloatingActionButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const { addNode, nodes, canvasOffset, canvasScale } = useCanvasStore();
-
-  useEffect(() => {
-    console.log('Current nodes:', nodes.length);
-  }, [nodes]);
+  const { addNode, nodes } = useCanvasStore();
 
   const nodeTypes = [
     { type: 'dataset', icon: Database, label: 'Dataset', color: 'text-blue-400' },
@@ -53,14 +49,13 @@ export function FloatingActionButton() {
       inputs: type === 'dataset' ? [] : ['data_in'],
       outputs: type === 'api' ? [] : ['data_out'],
       position: { 
-        x: (window.innerWidth / 2 - canvasOffset.x) / canvasScale,
-        y: (window.innerHeight / 2 - canvasOffset.y) / canvasScale + (nodes.length * 150)
+        x: 400 + (nodes.length * 50),
+        y: 300 + (nodes.length * 50)
       },
       owner: 'current-user',
       createdAt: new Date().toISOString(),
     };
     
-    console.log('Adding node:', newNode);
     addNode(newNode);
     setIsOpen(false);
   };

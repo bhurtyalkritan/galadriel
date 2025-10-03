@@ -71,13 +71,6 @@ export function CollapsibleSidebar({ open, onToggle }: CollapsibleSidebarProps) 
           </div>
         )}
       </div>
-      
-      {open && (
-        <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-30"
-          onClick={onToggle}
-        />
-      )}
     </>
   );
 }
