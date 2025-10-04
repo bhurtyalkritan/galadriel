@@ -53,11 +53,40 @@
     }
   }
 
+  @keyframes scan {
+    0% { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  @keyframes glitchLine {
+    0%, 90%, 100% { 
+      opacity: 0; 
+      transform: translateX(-100%); 
+    }
+    92%, 98% { 
+      opacity: 1; 
+      transform: translateX(100%); 
+    }
+  }
+
+  @keyframes gridScroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(50px); }
+  }
+
   /* Smooth hardware-accelerated transforms */
   .node-card {
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     perspective: 1000px;
+  }
+
+  .animate-scan {
+    animation: scan 4s linear infinite;
+  }
+
+  .animate-glitchLine {
+    animation: glitchLine 2s linear infinite;
   }
 }
 

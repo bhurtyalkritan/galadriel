@@ -1,14 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Canvas } from '@/components/canvas/Canvas';
 import { CollapsibleSidebar } from '@/components/sidebar/CollapsibleSidebar';
 import { FloatingActionButton } from '@/components/floating/FloatingActionButton';
 import { ProjectManager } from '@/components/floating/ProjectManager';
 import { ArtifactsManager } from '@/components/floating/ArtifactsManager';
+import { LoadingScreen } from '@/components/loading/LoadingScreen';
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 5000); // 5 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="h-screen flex bg-gradient-to-br from-black via-gray-900 to-black text-text relative overflow-hidden">
