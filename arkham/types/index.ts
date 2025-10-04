@@ -15,6 +15,27 @@ export interface Field {
   nullable: boolean;
 }
 
+export interface Schedule {
+  enabled: boolean;
+  type: 'interval' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  // For interval type
+  intervalValue?: number;
+  intervalUnit?: 'minutes' | 'hours' | 'days';
+  // For daily type
+  dailyTime?: string; // HH:mm format
+  // For weekly type
+  weeklyDays?: number[]; // 0-6, Sunday = 0
+  weeklyTime?: string; // HH:mm format
+  // For monthly type
+  monthlyDays?: number[]; // 1-31
+  monthlyTime?: string; // HH:mm format
+  // For custom cron
+  cronExpression?: string;
+  // Next scheduled run
+  nextRun?: string;
+  lastRun?: string;
+}
+
 export interface Node {
   id: string;
   type: NodeType;
@@ -24,6 +45,7 @@ export interface Node {
   position: { x: number; y: number };
   owner: string;
   createdAt: string;
+  schedule?: Schedule;
 }
 
 export type NodeType = 
@@ -41,7 +63,8 @@ export type NodeType =
   | 'knowledge_silo'
   | 'ai'
   | 'group'
-  | 'diagram';
+  | 'diagram'
+  | 'document';
 
 export interface Connector {
   id: string;

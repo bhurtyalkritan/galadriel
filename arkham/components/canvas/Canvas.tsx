@@ -5,6 +5,8 @@ import { useCanvasStore } from '@/store/canvas';
 import { NodeCard } from './NodeCard';
 import { ConnectorLine } from './ConnectorLine';
 import { generateId } from '@/lib/utils';
+import { GlobalRunControls } from '../controls/GlobalRunControls';
+import { Lock, Unlock } from 'lucide-react';
 
 export function Canvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -20,6 +22,7 @@ export function Canvas() {
     selectedConnector,
     canvasOffset,
     canvasScale,
+    isFrozen,
     addNode,
     updateNode,
     addConnector,
@@ -28,6 +31,7 @@ export function Canvas() {
     setSelectedConnector,
     setCanvasOffset,
     setCanvasScale,
+    setIsFrozen,
   } = useCanvasStore();
 
   useEffect(() => {
@@ -105,7 +109,7 @@ export function Canvas() {
       }
     }
 
-    if (isPanning && lastPanPoint && !connecting) {
+    if (isPanning && lastPanPoint && !connecting && !isFrozen) {
       const deltaX = e.clientX - lastPanPoint.x;
       const deltaY = e.clientY - lastPanPoint.y;
       
@@ -116,18 +120,18 @@ export function Canvas() {
       
       setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
-  }, [connecting, isPanning, lastPanPoint, canvasOffset, canvasScale, nodes, setCanvasOffset]);
+  }, [connecting, isPanning, lastPanPoint, canvasOffset, canvasScale, nodes, setCanvasOffset, isFrozen]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('.node-card') || target.closest('button')) return;
     
-    if (e.button === 0) {
+    if (e.button === 0 && !isFrozen) {
       setIsPanning(true);
       setLastPanPoint({ x: e.clientX, y: e.clientY });
       e.preventDefault();
     }
-  }, []);
+  }, [isFrozen]);
 
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
@@ -144,6 +148,8 @@ export function Canvas() {
   }, [connecting]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
+    if (isFrozen) return;
+    
     e.preventDefault();
     
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -165,7 +171,7 @@ export function Canvas() {
     setCanvasOffset({ x: newOffsetX, y: newOffsetY });
     
     useCanvasStore.setState({ scale: newScale });
-  }, [canvasScale, canvasOffset, setCanvasScale, setCanvasOffset]);
+  }, [canvasScale, canvasOffset, setCanvasScale, setCanvasOffset, isFrozen]);
 
   const resetView = useCallback(() => {
     setCanvasScale(1);
@@ -209,6 +215,16 @@ export function Canvas() {
       setTempLine(null);
       setSelectedNode(null);
       setSelectedConnector(null);
+    } else if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      // Toggle freeze with 'F' key
+      const activeElement = document.activeElement;
+      const isTyping = activeElement?.tagName === 'INPUT' || 
+                      activeElement?.tagName === 'TEXTAREA' ||
+                      activeElement?.getAttribute('contenteditable') === 'true';
+      if (!isTyping) {
+        e.preventDefault();
+        setIsFrozen(!isFrozen);
+      }
     } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       resetView();
@@ -239,6 +255,9 @@ export function Canvas() {
 
   return (
     <div className="flex-1 relative h-full w-full">
+      {/* Global Run Controls - Top Middle */}
+      <GlobalRunControls />
+      
       <div
         ref={canvasRef}
         className={`w-full h-full relative ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -347,6 +366,18 @@ export function Canvas() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => setIsFrozen(!isFrozen)}
+            className={`bg-card/80 backdrop-blur-sm border ${
+              isFrozen 
+                ? 'border-amber-500/50 text-amber-400 hover:text-amber-300' 
+                : 'border-border/30 text-text hover:text-accent'
+            } px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card text-xs flex items-center gap-2`}
+            title={isFrozen ? "Unfreeze canvas (F)" : "Freeze canvas (F)"}
+          >
+            {isFrozen ? <Lock size={14} /> : <Unlock size={14} />}
+            {isFrozen ? 'Frozen' : 'Freeze'}
+          </button>
+          <button
             onClick={resetView}
             className="bg-card/80 backdrop-blur-sm border border-border/30 text-text hover:text-accent px-3 py-2 rounded-lg transition-all duration-200 hover:bg-card text-xs"
             title="Reset view (Ctrl+0)"
@@ -369,6 +400,7 @@ export function Canvas() {
         <div className="font-medium mb-1">Navigation:</div>
         <div>• Mouse wheel / Q/E: Zoom in/out</div>
         <div>• Click + drag / Arrow keys: Pan</div>
+        <div>• F: Freeze/Unfreeze canvas</div>
         <div>• Cmd/Ctrl+0: Reset view</div>
         <div>• Cmd/Ctrl+1: Fit all nodes</div>
         <div>• Cmd/Ctrl+Z: Undo</div>

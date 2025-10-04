@@ -1,14 +1,17 @@
 'use client';
 
 import React from 'react';
-import { Download, Filter, Database, GitBranch, Zap, Globe, Code, Brain, BarChart3, StickyNote, Archive, Sparkles, Square } from 'lucide-react';
-import { Node as NodeType } from '@/types';
+import { Download, Filter, Database, GitBranch, Zap, Globe, Code, Brain, BarChart3, StickyNote, Archive, Sparkles, Square, Play, Square as StopSquare, Settings, FileText } from 'lucide-react';
+import { Node, NodeType, Schedule } from '@/types';
+import { ScheduleEditor } from '@/components/schedule/ScheduleEditor';
+import { ScheduleBadge } from '@/components/schedule/ScheduleBadge';
 import { cn, generateId } from '@/lib/utils';
 import { useCanvasStore } from '@/store/canvas';
 import { DiagramShape } from './DiagramShape';
+import { RichDocumentEditor } from '../document/RichDocumentEditor';
 
 interface NodeCardProps {
-  node: NodeType;
+  node: Node;
   selected: boolean;
   connecting: boolean;
   onSelect: (id: string) => void;
@@ -33,6 +36,7 @@ const nodeIcons = {
   ai: Sparkles,
   group: Square,
   diagram: Square,
+  document: FileText,
 };
 
 const nodeColors = {
@@ -51,6 +55,7 @@ const nodeColors = {
   ai: 'border-violet-500',
   group: 'border-slate-500',
   diagram: 'border-blue-500',
+  document: 'border-teal-500',
 };
 
 export function NodeCard({ 
@@ -64,7 +69,8 @@ export function NodeCard({
 }: NodeCardProps) {
   const Icon = nodeIcons[node.type];
   const colorClass = nodeColors[node.type];
-  const { scale, updateNode } = useCanvasStore();
+  const { scale, updateNode, runningNodes, isFrozen } = useCanvasStore();
+  const isRunning = runningNodes.has(node.id);
 
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState<{ x: number; y: number } | null>(null);
@@ -75,6 +81,9 @@ export function NodeCard({
     
     e.stopPropagation();
     onSelect(node.id);
+    
+    // Don't allow dragging if frozen
+    if (isFrozen) return;
     
     // Small delay to distinguish between click and drag
     dragTimeoutRef.current = setTimeout(() => {
@@ -521,8 +530,12 @@ export function NodeCard({
   if (node.type === 'group') {
     const [isResizing, setIsResizing] = React.useState(false);
     const [resizeStart, setResizeStart] = React.useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const [showScheduleEditor, setShowScheduleEditor] = React.useState(false);
+    const { runGroup, stopGroup, runningGroups, updateSchedule, isFrozen } = useCanvasStore();
+    const isRunning = runningGroups.has(node.id);
 
     const handleResizeMouseDown = (e: React.MouseEvent) => {
+      if (isFrozen) return; // Don't allow resizing if frozen
       e.stopPropagation();
       setIsResizing(true);
       setResizeStart({
@@ -597,7 +610,7 @@ export function NodeCard({
         onMouseDown={handleMouseDown}
       >
         {/* Label */}
-        <div className="absolute -top-6 left-0 px-2 py-1 bg-background/80 backdrop-blur-sm border border-border/30 rounded-md">
+        <div className="absolute -top-6 left-0 px-2 py-1 bg-background/80 backdrop-blur-sm border border-border/30 rounded-md flex items-center gap-2">
           <input
             type="text"
             value={node.config.label || 'Group'}
@@ -608,10 +621,50 @@ export function NodeCard({
               });
             }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-transparent text-xs font-medium text-text outline-none w-32"
+            className="bg-transparent text-xs font-medium text-text outline-none w-24"
             placeholder="Group name"
           />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isRunning) {
+                stopGroup(node.id);
+              } else {
+                runGroup(node.id);
+              }
+            }}
+            className={cn(
+              "p-1 rounded hover:bg-accent/20 transition-colors",
+              isRunning && "bg-accent/20"
+            )}
+            title={isRunning ? "Stop" : "Run"}
+          >
+            {isRunning ? (
+              <StopSquare className="w-3 h-3 text-red-400" />
+            ) : (
+              <Play className="w-3 h-3 text-green-400" />
+            )}
+          </button>
+          <Settings 
+            className={cn(
+              "w-3 h-3 text-accent transition-all",
+              isRunning && "animate-spin"
+            )}
+          />
+          <ScheduleBadge
+            schedule={node.schedule}
+            onClick={() => setShowScheduleEditor(true)}
+          />
         </div>
+
+        {/* Schedule Editor Modal */}
+        {showScheduleEditor && (
+          <ScheduleEditor
+            schedule={node.schedule}
+            onSave={(schedule) => updateSchedule(node.id, schedule)}
+            onClose={() => setShowScheduleEditor(false)}
+          />
+        )}
 
         {/* Resize handle */}
         <div
@@ -622,6 +675,135 @@ export function NodeCard({
           onMouseDown={handleResizeMouseDown}
         >
           <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-current opacity-40 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+    );
+  }
+
+  // Special rendering for document nodes (rich text editor)
+  if (node.type === 'document') {
+    const [isResizing, setIsResizing] = React.useState(false);
+    const [resizeStart, setResizeStart] = React.useState<{ x: number; y: number; width: number; height: number } | null>(null);
+    const { isFrozen } = useCanvasStore();
+
+    const handleDocumentChange = (content: string) => {
+      updateNode(node.id, {
+        ...node,
+        config: { ...node.config, content }
+      });
+    };
+
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+      if (isFrozen) return; // Don't allow resizing if frozen
+      e.stopPropagation();
+      setIsResizing(true);
+      setResizeStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: node.config.width || 480,
+        height: node.config.height || 400,
+      });
+    };
+
+    const handleResizeMouseMove = React.useCallback((e: MouseEvent) => {
+      if (!isResizing || !resizeStart) return;
+
+      const deltaX = (e.clientX - resizeStart.x) / scale;
+      const deltaY = (e.clientY - resizeStart.y) / scale;
+
+      const newWidth = Math.max(360, resizeStart.width + deltaX);
+      const newHeight = Math.max(300, resizeStart.height + deltaY);
+
+      updateNode(node.id, {
+        config: {
+          ...node.config,
+          width: newWidth,
+          height: newHeight,
+        },
+      });
+    }, [isResizing, resizeStart, scale, node.id, node.config, updateNode]);
+
+    const handleResizeMouseUp = React.useCallback(() => {
+      setIsResizing(false);
+      setResizeStart(null);
+    }, []);
+
+    React.useEffect(() => {
+      if (isResizing) {
+        document.addEventListener('mousemove', handleResizeMouseMove);
+        document.addEventListener('mouseup', handleResizeMouseUp);
+        return () => {
+          document.removeEventListener('mousemove', handleResizeMouseMove);
+          document.removeEventListener('mouseup', handleResizeMouseUp);
+        };
+      }
+    }, [isResizing, handleResizeMouseMove, handleResizeMouseUp]);
+
+    const width = node.config.width || 480;
+    const height = node.config.height || 400;
+
+    return (
+      <div
+        className={cn(
+          'node-card absolute bg-card/95 backdrop-blur-sm border-2 border-teal-500 rounded-xl cursor-move transition-all duration-200 overflow-hidden',
+          selected ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : 'hover:shadow-lg',
+          isDragging ? 'cursor-grabbing opacity-80' : '',
+          isRunning ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/40 animate-pulse' : ''
+        )}
+        style={{
+          left: node.position.x,
+          top: node.position.y,
+          width: `${width}px`,
+          height: `${height}px`,
+          willChange: 'transform',
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        {/* Running ignite effect */}
+        {isRunning && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-red-500/20 animate-pulse" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-amber-400/0 via-amber-400/30 to-amber-400/0 blur-sm animate-shimmer" />
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-3 bg-teal-900/20 border-b border-teal-500/20">
+          <FileText size={18} className="text-teal-400" />
+          <input
+            type="text"
+            value={node.config.title || 'Document'}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateNode(node.id, {
+                ...node,
+                config: { ...node.config, title: e.target.value }
+              });
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex-1 bg-transparent border-none outline-none font-semibold text-sm text-teal-100 placeholder-teal-300/50"
+            placeholder="Document title..."
+          />
+          <div className="text-[10px] text-teal-200/60">
+            Rich Text
+          </div>
+        </div>
+
+        {/* Rich Text Editor */}
+        <div className="h-[calc(100%-56px)]">
+          <RichDocumentEditor
+            content={node.config.content || ''}
+            onChange={handleDocumentChange}
+          />
+        </div>
+
+        {/* Resize handle */}
+        <div
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize group"
+          onMouseDown={handleResizeMouseDown}
+        >
+          <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-teal-400 opacity-40 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     );
@@ -774,7 +956,8 @@ export function NodeCard({
         colorClass,
         selected ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : 'hover:shadow-md',
         connecting ? 'ring-2 ring-yellow-500 shadow-lg shadow-yellow-500/30' : '',
-        isDragging ? 'cursor-grabbing opacity-80' : ''
+        isDragging ? 'cursor-grabbing opacity-80' : '',
+        isRunning ? 'ring-2 ring-amber-400 shadow-lg shadow-amber-500/40 animate-pulse' : ''
       )}
       style={{
         left: node.position.x,
@@ -785,6 +968,14 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
+      {/* Running ignite effect */}
+      {isRunning && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-red-500/20 animate-pulse" />
+          <div className="absolute -inset-1 bg-gradient-to-r from-amber-400/0 via-amber-400/30 to-amber-400/0 blur-sm animate-shimmer" />
+        </div>
+      )}
+      
       {/* Input Ports */}
       {node.inputs && node.inputs.length > 0 && (
         <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-3">

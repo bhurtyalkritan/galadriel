@@ -25,6 +25,7 @@ export function FloatingActionButton() {
     { type: 'ml', icon: Brain, label: 'ML Model', color: 'text-pink-400', description: 'Train and run ML models' },
     { type: 'visualization', icon: BarChart3, label: 'Visualization', color: 'text-emerald-400', description: 'Create data visualizations' },
     { type: 'note', icon: StickyNote, label: 'Note', color: 'text-amber-400', description: 'Add annotations and notes' },
+    { type: 'document', icon: FileText, label: 'Document', color: 'text-teal-400', description: 'Rich text editor with formatting' },
     { type: 'knowledge_silo', icon: Archive, label: 'Knowledge Silo', color: 'text-indigo-400', description: 'Store files for AI context' },
     { type: 'ai', icon: Sparkles, label: 'AI Assistant', color: 'text-violet-400', description: 'Conversational AI model' },
     { type: 'group', icon: Square, label: 'Group', color: 'text-slate-400', description: 'Visual container to organize nodes' },
@@ -215,6 +216,15 @@ export function FloatingActionButton() {
           fontSize: 14,
           isLocked: false,
           password: '',
+        };
+        inputs = [];
+        outputs = [];
+        break;
+        
+      case 'document':
+        config = { 
+          title: 'Document',
+          content: '<p>Start typing your document here...</p>',
         };
         inputs = [];
         outputs = [];

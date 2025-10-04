@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Connector, Node } from '@/types';
+import { useCanvasStore } from '@/store/canvas';
 
 interface ConnectorLineProps {
   connector: Connector;
@@ -19,6 +20,8 @@ export function ConnectorLine({
   onSelect 
 }: ConnectorLineProps) {
   const pathRef = useRef<SVGPathElement>(null);
+  const { activeConnectors } = useCanvasStore();
+  const isActive = activeConnectors.has(connector.id);
   
   // Default to arrow style
   const lineType = connector.style?.lineType || 'solid';
@@ -35,6 +38,8 @@ export function ConnectorLine({
         return { width: 280, height: 200 };
       case 'note':
         return { width: 280, height: 180 };
+      case 'document':
+        return { width: node.config?.width || 480, height: node.config?.height || 400 };
       case 'group':
         return { width: node.config?.width || 400, height: node.config?.height || 300 };
       case 'diagram':
@@ -109,7 +114,7 @@ export function ConnectorLine({
         >
           <path
             d="M0,0 L0,6 L9,3 z"
-            fill={selected ? '#6fa3ff' : lineColor}
+            fill={isActive ? '#fbbf24' : selected ? '#6fa3ff' : lineColor}
           />
         </marker>
         {lineType === 'bidirectional' && (
@@ -124,7 +129,7 @@ export function ConnectorLine({
           >
             <path
               d="M9,0 L9,6 L0,3 z"
-              fill={selected ? '#6fa3ff' : lineColor}
+              fill={isActive ? '#fbbf24' : selected ? '#6fa3ff' : lineColor}
             />
           </marker>
         )}
@@ -135,10 +140,28 @@ export function ConnectorLine({
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        <filter id="energy-glow">
+          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
         <linearGradient id={`gradient-${connector.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="rgba(111, 163, 255, 0.8)" />
           <stop offset="50%" stopColor="rgba(139, 92, 246, 0.6)" />
           <stop offset="100%" stopColor="rgba(59, 130, 246, 0.8)" />
+        </linearGradient>
+        <linearGradient id={`energy-gradient-${connector.id}`} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="rgba(251, 191, 36, 0.2)">
+            <animate attributeName="offset" values="0;1;0" dur="2s" repeatCount="indefinite" />
+          </stop>
+          <stop offset="50%" stopColor="rgba(251, 191, 36, 1)">
+            <animate attributeName="offset" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+          </stop>
+          <stop offset="100%" stopColor="rgba(251, 191, 36, 0.2)">
+            <animate attributeName="offset" values="1;1;1" dur="2s" repeatCount="indefinite" />
+          </stop>
         </linearGradient>
       </defs>
       
@@ -153,11 +176,36 @@ export function ConnectorLine({
         />
       )}
       
+      {/* Energy flow animation when active */}
+      {isActive && (
+        <>
+          <path
+            d={pathData}
+            stroke="rgba(251, 191, 36, 0.4)"
+            strokeWidth={lineWidth + 4}
+            fill="none"
+            filter="url(#energy-glow)"
+            style={{ pointerEvents: 'none' }}
+          />
+          <path
+            d={pathData}
+            stroke={`url(#energy-gradient-${connector.id})`}
+            strokeWidth={lineWidth + 2}
+            fill="none"
+            strokeDasharray="20,10"
+            style={{ 
+              pointerEvents: 'none',
+              animation: 'dash 1s linear infinite'
+            }}
+          />
+        </>
+      )}
+      
       <path
         ref={pathRef}
         d={pathData}
-        stroke={selected ? `url(#gradient-${connector.id})` : lineColor}
-        strokeWidth={selected ? lineWidth + 1 : lineWidth}
+        stroke={isActive ? '#fbbf24' : selected ? `url(#gradient-${connector.id})` : lineColor}
+        strokeWidth={isActive ? lineWidth + 1 : selected ? lineWidth + 1 : lineWidth}
         fill="none"
         strokeDasharray={getDashArray()}
         markerEnd={`url(#arrowhead-${connector.id})`}
@@ -188,6 +236,14 @@ export function ConnectorLine({
           {label}
         </text>
       )}
+      
+      <style jsx>{`
+        @keyframes dash {
+          to {
+            stroke-dashoffset: -30;
+          }
+        }
+      `}</style>
     </svg>
   );
 }

@@ -25,7 +25,7 @@ export function DiagramShape({
   onStartConnection,
   onEndConnection,
 }: DiagramShapeProps) {
-  const { scale, updateNode } = useCanvasStore();
+  const { scale, updateNode, isFrozen } = useCanvasStore();
   const [isDragging, setIsDragging] = React.useState(false);
   const [isResizing, setIsResizing] = React.useState(false);
   const [resizeHandle, setResizeHandle] = React.useState<string | null>(null);
@@ -42,15 +42,24 @@ export function DiagramShape({
     if ((e.target as HTMLElement).closest('.resize-handle')) return;
     
     e.stopPropagation();
+    
+    // Always select immediately
     onSelect(node.id);
     
+    // Don't allow dragging if frozen
+    if (isFrozen) return;
+    
+    // Start drag prep immediately (no timeout)
+    setDragStart({ x: e.clientX, y: e.clientY });
+    
+    // Use a small timeout to distinguish click from drag
     dragTimeoutRef.current = setTimeout(() => {
       setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }, 50);
+    }, 100);
   };
 
   const handleResizeStart = (handle: string) => (e: React.MouseEvent) => {
+    if (isFrozen) return; // Don't allow resizing if frozen
     e.stopPropagation();
     e.preventDefault();
     setIsResizing(true);
@@ -113,7 +122,10 @@ export function DiagramShape({
       });
 
       setDragStart({ x: e.clientX, y: e.clientY });
-    } else if (!isDragging || !dragStart) return;
+      return; // Early return to prevent drag logic from running
+    }
+    
+    if (!isDragging || !dragStart) return;
 
     const deltaX = (e.clientX - dragStart.x) / scale;
     const deltaY = (e.clientY - dragStart.y) / scale;
@@ -501,28 +513,32 @@ export function DiagramShape({
         )
       )}
 
-      {/* Resize Handles - Only show when selected */}
-      {selected && (
+      {/* Resize Handles - Only show when selected and not editing */}
+      {selected && !isEditing && (
         <>
           {/* Corner Handles */}
           <div 
             className="resize-handle absolute -top-1 -left-1 w-3 h-3 bg-accent border border-white rounded-full cursor-nwse-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('nw')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute -top-1 -right-1 w-3 h-3 bg-accent border border-white rounded-full cursor-nesw-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('ne')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute -bottom-1 -left-1 w-3 h-3 bg-accent border border-white rounded-full cursor-nesw-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('sw')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute -bottom-1 -right-1 w-3 h-3 bg-accent border border-white rounded-full cursor-nwse-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('se')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           
@@ -530,21 +546,25 @@ export function DiagramShape({
           <div 
             className="resize-handle absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-accent/70 border border-white rounded-full cursor-ns-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('n')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-accent/70 border border-white rounded-full cursor-ns-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('s')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute top-1/2 -translate-y-1/2 -left-1 w-3 h-3 bg-accent/70 border border-white rounded-full cursor-ew-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('w')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
           <div 
             className="resize-handle absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-accent/70 border border-white rounded-full cursor-ew-resize hover:scale-125 transition-transform z-30"
             onMouseDown={handleResizeStart('e')}
+            style={{ pointerEvents: 'auto' }}
             title="Resize"
           />
         </>
