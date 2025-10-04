@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Settings, Database, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Database, MessageSquare, Square } from 'lucide-react';
 import { useCanvasStore } from '@/store/canvas';
 import { Inspector } from '@/components/inspector/Inspector';
 import { FileUpload } from '@/components/upload/FileUpload';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { GroupsPanel } from '@/components/groups/GroupsPanel';
 
 interface CollapsibleSidebarProps {
   open: boolean;
@@ -19,7 +20,8 @@ export function CollapsibleSidebar({ open, onToggle }: CollapsibleSidebarProps) 
   const tabs = [
     { id: 'inspector', label: 'Inspector', icon: Settings, component: Inspector },
     { id: 'datasets', label: 'Datasets', icon: Database, component: FileUpload },
-    { id: 'chat', label: 'AI Chat', icon: MessageSquare, component: ChatPanel },
+    { id: 'chat', label: 'Chat', icon: MessageSquare, component: ChatPanel },
+    { id: 'groups', label: 'Groups', icon: Square, component: GroupsPanel },
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Inspector;
@@ -34,7 +36,7 @@ export function CollapsibleSidebar({ open, onToggle }: CollapsibleSidebarProps) 
       </button>
 
       <div className={`fixed top-0 right-0 h-full bg-panel/90 backdrop-blur-sm border-l border-border/30 transition-all duration-300 ease-out z-40 ${
-        open ? 'w-96 translate-x-0' : 'w-0 translate-x-full'
+        open ? 'w-[480px] translate-x-0' : 'w-0 translate-x-full'
       }`}>
         {open && (
           <div className="h-full flex flex-col">

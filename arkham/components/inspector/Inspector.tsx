@@ -11,11 +11,12 @@ interface InspectorProps {
 }
 
 export function Inspector({ className }: InspectorProps) {
-  const { selectedNode, nodes, updateNode } = useCanvasStore();
+  const { selectedNode, selectedConnector, nodes, connectors, updateNode, updateConnector } = useCanvasStore();
   const [activeTab, setActiveTab] = useState('configure');
   const [artifacts, setArtifacts] = useState<any[]>([]);
   
   const selectedNodeData = selectedNode ? nodes.find(n => n.id === selectedNode) : null;
+  const selectedConnectorData = selectedConnector ? connectors.find(c => c.id === selectedConnector) : null;
 
   useEffect(() => {
     // Load artifacts from localStorage
@@ -24,6 +25,132 @@ export function Inspector({ className }: InspectorProps) {
       setArtifacts(JSON.parse(savedArtifacts));
     }
   }, [selectedNode]);
+  
+  // Show connector editor if a connector is selected
+  if (selectedConnectorData) {
+    const fromNode = nodes.find(n => n.id === selectedConnectorData.fromNode);
+    const toNode = nodes.find(n => n.id === selectedConnectorData.toNode);
+    
+    return (
+      <div className={`${className}`}>
+        <div className="p-4 border-b border-border/30 flex items-center justify-between">
+          <h3 className="text-sm font-medium">Connection</h3>
+          <button
+            className="text-text-subtle hover:text-text transition-colors"
+            onClick={() => useCanvasStore.getState().setSelectedConnector(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        
+        <div className="p-4 overflow-y-auto max-h-[calc(100vh-180px)] space-y-4">
+          <div>
+            <label className="block text-xs font-medium mb-2 text-text-subtle">From</label>
+            <div className="text-sm text-text">{fromNode?.config?.name || fromNode?.type || 'Unknown'}</div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-2 text-text-subtle">To</label>
+            <div className="text-sm text-text">{toNode?.config?.name || toNode?.type || 'Unknown'}</div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-2">Line Style</label>
+            <select
+              value={selectedConnectorData.style?.lineType || 'solid'}
+              onChange={(e) => useCanvasStore.getState().updateConnector(selectedConnectorData.id, {
+                style: { 
+                  ...selectedConnectorData.style, 
+                  lineType: e.target.value as 'solid' | 'dashed' | 'dotted' | 'bidirectional'
+                }
+              })}
+              className="input-field w-full text-xs"
+            >
+              <option value="solid">Solid Arrow →</option>
+              <option value="dashed">Dashed Arrow ⇢</option>
+              <option value="dotted">Dotted Arrow ⋯→</option>
+              <option value="bidirectional">Bidirectional ↔</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-2">Line Width</label>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              step="0.5"
+              value={selectedConnectorData.style?.width || 2}
+              onChange={(e) => useCanvasStore.getState().updateConnector(selectedConnectorData.id, {
+                style: { 
+                  ...selectedConnectorData.style, 
+                  width: parseFloat(e.target.value)
+                }
+              })}
+              className="w-full"
+            />
+            <div className="text-xs text-text-subtle mt-1">{selectedConnectorData.style?.width || 2}px</div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-2">Color</label>
+            <div className="flex gap-2">
+              {[
+                { color: 'rgba(111, 163, 255, 0.6)', label: 'Blue' },
+                { color: 'rgba(139, 92, 246, 0.6)', label: 'Purple' },
+                { color: 'rgba(16, 185, 129, 0.6)', label: 'Green' },
+                { color: 'rgba(245, 158, 11, 0.6)', label: 'Amber' },
+                { color: 'rgba(239, 68, 68, 0.6)', label: 'Red' },
+              ].map((c) => (
+                <button
+                  key={c.color}
+                  onClick={() => useCanvasStore.getState().updateConnector(selectedConnectorData.id, {
+                    style: { ...selectedConnectorData.style, color: c.color }
+                  })}
+                  className={cn(
+                    "w-8 h-8 rounded border-2 transition-all",
+                    selectedConnectorData.style?.color === c.color 
+                      ? 'border-white scale-110' 
+                      : 'border-border/30 hover:scale-105'
+                  )}
+                  style={{ backgroundColor: c.color }}
+                  title={c.label}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium mb-2">Label (optional)</label>
+            <input
+              type="text"
+              value={selectedConnectorData.style?.label || ''}
+              onChange={(e) => useCanvasStore.getState().updateConnector(selectedConnectorData.id, {
+                style: { 
+                  ...selectedConnectorData.style, 
+                  label: e.target.value
+                }
+              })}
+              className="input-field w-full text-xs"
+              placeholder="Add label..."
+            />
+          </div>
+          
+          <div className="pt-4 border-t border-border/30">
+            <button
+              onClick={() => {
+                useCanvasStore.getState().removeConnector(selectedConnectorData.id);
+                useCanvasStore.getState().setSelectedConnector(null);
+              }}
+              className="w-full px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-medium transition-colors"
+            >
+              Delete Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   if (!selectedNodeData) {
     return (
@@ -402,7 +529,7 @@ export function Inspector({ className }: InspectorProps) {
                                 {block.name || `block${idx + 1}`}()
                               </code>
                             ))}
-                          </div>
+                        </div>
                         </div>
                       )}
                       {artifacts && artifacts.length > 0 && (
@@ -960,111 +1087,317 @@ export function Inspector({ className }: InspectorProps) {
               </>
             )}
 
-            {/* AI Assistant Configuration */}
-            {selectedNodeData.type === 'ai' && (
+            {/* Diagram Shape Configuration */}
+            {selectedNodeData.type === 'diagram' && (
               <>
-                <div className="mb-3">
-                  <label className="block text-xs font-medium mb-1">AI Name</label>
-                  <input
-                    type="text"
-                    value={selectedNodeData.config.name || ''}
-                    onChange={(e) => {
-                      updateNode(selectedNodeData.id, {
-                        ...selectedNodeData,
-                        config: { ...selectedNodeData.config, name: e.target.value },
-                      });
-                    }}
-                    className="input-field w-full text-xs"
-                    placeholder="AI Assistant"
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="block text-xs font-medium mb-1">Model</label>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">Shape Type</label>
                   <select
-                    value={selectedNodeData.config.modelId || 'gpt-4'}
+                    value={selectedNodeData.config.shape || 'rectangle'}
                     onChange={(e) => {
                       updateNode(selectedNodeData.id, {
-                        ...selectedNodeData,
-                        config: { ...selectedNodeData.config, modelId: e.target.value },
+                        config: { ...selectedNodeData.config, shape: e.target.value },
                       });
                     }}
                     className="input-field w-full text-xs"
                   >
-                    <option value="gpt-4">GPT-4 (OpenAI)</option>
-                    <option value="gpt-3.5">GPT-3.5 Turbo (OpenAI)</option>
-                    <option value="claude-3">Claude 3 (Anthropic)</option>
-                    <option value="gemini-pro">Gemini Pro (Google)</option>
-                    <option value="custom">Custom Model</option>
+                    <optgroup label="Basic Shapes">
+                      <option value="rectangle">Rectangle</option>
+                      <option value="rounded-rectangle">Rounded Rectangle</option>
+                      <option value="circle">Circle</option>
+                      <option value="ellipse">Ellipse</option>
+                      <option value="triangle">Triangle</option>
+                      <option value="diamond">Diamond</option>
+                      <option value="hexagon">Hexagon</option>
+                      <option value="star">Star</option>
+                      <option value="parallelogram">Parallelogram</option>
+                      <option value="trapezoid">Trapezoid</option>
+                    </optgroup>
+                    <optgroup label="System Design">
+                      <option value="cylinder">Cylinder (Database)</option>
+                      <option value="cloud">Cloud (External Service)</option>
+                      <option value="actor">Actor (User/Person)</option>
+                      <option value="document">Document</option>
+                      <option value="gear">Gear (Process)</option>
+                      <option value="queue">Queue/Message Bus</option>
+                    </optgroup>
+                    <optgroup label="Connectors">
+                      <option value="line">Line</option>
+                      <option value="arrow">Arrow</option>
+                    </optgroup>
                   </select>
                 </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs font-medium mb-1">Temperature</label>
-                  <div className="flex items-center gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Width</label>
                     <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={selectedNodeData.config.temperature || 70}
+                      type="number"
+                      value={selectedNodeData.config.width || 120}
                       onChange={(e) => {
                         updateNode(selectedNodeData.id, {
-                          ...selectedNodeData,
-                          config: { ...selectedNodeData.config, temperature: parseInt(e.target.value) },
+                          config: { ...selectedNodeData.config, width: Math.max(20, parseInt(e.target.value) || 20) },
                         });
                       }}
-                      className="flex-1"
+                      className="input-field w-full text-xs"
+                      min="20"
                     />
-                    <span className="text-xs text-text-subtle w-8 text-right">{selectedNodeData.config.temperature || 70}</span>
                   </div>
-                  <div className="text-[10px] text-text-subtle mt-1">
-                    Lower = more focused, Higher = more creative
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Height</label>
+                    <input
+                      type="number"
+                      value={selectedNodeData.config.height || 80}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, height: Math.max(20, parseInt(e.target.value) || 20) },
+                        });
+                      }}
+                      className="input-field w-full text-xs"
+                      min="20"
+                    />
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs font-medium mb-1">System Prompt</label>
-                  <textarea
-                    value={selectedNodeData.config.systemPrompt || ''}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Fill Color</label>
+                    <input
+                      type="color"
+                      value={selectedNodeData.config.fill || '#3b82f6'}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, fill: e.target.value },
+                        });
+                      }}
+                      className="input-field w-full h-8"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Stroke Color</label>
+                    <input
+                      type="color"
+                      value={selectedNodeData.config.stroke || '#60a5fa'}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, stroke: e.target.value },
+                        });
+                      }}
+                      className="input-field w-full h-8"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">
+                    Stroke Width: {selectedNodeData.config.strokeWidth || 2}px
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={selectedNodeData.config.strokeWidth || 2}
                     onChange={(e) => {
                       updateNode(selectedNodeData.id, {
-                        ...selectedNodeData,
-                        config: { ...selectedNodeData.config, systemPrompt: e.target.value },
+                        config: { ...selectedNodeData.config, strokeWidth: parseInt(e.target.value) },
                       });
                     }}
-                    className="input-field w-full text-xs h-24 resize-none font-mono"
-                    placeholder="You are a helpful AI assistant..."
+                    className="w-full"
                   />
                 </div>
 
-                <div className="mb-3">
-                  <label className="block text-xs font-medium mb-1">Max Tokens</label>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">Text</label>
                   <input
-                    type="number"
-                    value={selectedNodeData.config.maxTokens || 2000}
+                    type="text"
+                    value={selectedNodeData.config.text || ''}
                     onChange={(e) => {
                       updateNode(selectedNodeData.id, {
-                        ...selectedNodeData,
-                        config: { ...selectedNodeData.config, maxTokens: parseInt(e.target.value) },
+                        config: { ...selectedNodeData.config, text: e.target.value },
                       });
                     }}
                     className="input-field w-full text-xs"
-                    min="100"
-                    max="8000"
-                    step="100"
+                    placeholder="Add text..."
                   />
-                  <div className="text-[10px] text-text-subtle mt-1">
-                    Maximum response length
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Font Size</label>
+                    <input
+                      type="number"
+                      value={selectedNodeData.config.fontSize || 14}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, fontSize: parseInt(e.target.value) || 14 },
+                        });
+                      }}
+                      className="input-field w-full text-xs"
+                      min="8"
+                      max="48"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Text Color</label>
+                    <input
+                      type="color"
+                      value={selectedNodeData.config.textColor || '#ffffff'}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, textColor: e.target.value },
+                        });
+                      }}
+                      className="input-field w-full h-8"
+                    />
                   </div>
                 </div>
 
-                {/* Connection Info */}
-                <div className="p-3 bg-violet-500/10 border border-violet-500/30 rounded-lg">
-                  <div className="text-xs font-medium mb-2 text-violet-300">💡 Usage</div>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">
+                    Opacity: {selectedNodeData.config.opacity || 100}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={selectedNodeData.config.opacity || 100}
+                    onChange={(e) => {
+                      updateNode(selectedNodeData.id, {
+                        config: { ...selectedNodeData.config, opacity: parseInt(e.target.value) },
+                      });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">
+                    Rotation: {selectedNodeData.config.rotation || 0}°
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    value={selectedNodeData.config.rotation || 0}
+                    onChange={(e) => {
+                      updateNode(selectedNodeData.id, {
+                        config: { ...selectedNodeData.config, rotation: parseInt(e.target.value) },
+                      });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <div className="text-xs font-medium mb-2 text-blue-300">💡 Diagram Tips</div>
                   <div className="text-[10px] text-text-subtle space-y-1">
-                    <div>• Connect Knowledge Silo nodes to provide context</div>
-                    <div>• Connect to chat interface for conversations</div>
-                    <div>• Multiple knowledge bases = richer context</div>
+                    <div>• Use shapes to create flowcharts</div>
+                    <div>• Add text labels for clarity</div>
+                    <div>• Combine shapes to build diagrams</div>
+                    <div>• Adjust colors to match your theme</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Group Configuration */}
+            {selectedNodeData.type === 'group' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">Label</label>
+                  <input
+                    type="text"
+                    value={selectedNodeData.config.label || ''}
+                    onChange={(e) => {
+                      updateNode(selectedNodeData.id, {
+                        config: { ...selectedNodeData.config, label: e.target.value },
+                      });
+                    }}
+                    className="input-field w-full text-xs"
+                    placeholder="Group name"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Width</label>
+                    <input
+                      type="number"
+                      value={selectedNodeData.config.width || 400}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, width: Math.max(200, parseInt(e.target.value) || 200) },
+                        });
+                      }}
+                      className="input-field w-full text-xs"
+                      min="200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-text-subtle">Height</label>
+                    <input
+                      type="number"
+                      value={selectedNodeData.config.height || 300}
+                      onChange={(e) => {
+                        updateNode(selectedNodeData.id, {
+                          config: { ...selectedNodeData.config, height: Math.max(150, parseInt(e.target.value) || 150) },
+                        });
+                      }}
+                      className="input-field w-full text-xs"
+                      min="150"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">Color</label>
+                  <select
+                    value={selectedNodeData.config.color || 'slate'}
+                    onChange={(e) => {
+                      updateNode(selectedNodeData.id, {
+                        config: { ...selectedNodeData.config, color: e.target.value },
+                      });
+                    }}
+                    className="input-field w-full text-xs"
+                  >
+                    <option value="slate">Slate</option>
+                    <option value="blue">Blue</option>
+                    <option value="purple">Purple</option>
+                    <option value="green">Green</option>
+                    <option value="amber">Amber</option>
+                    <option value="red">Red</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-text-subtle">
+                    Opacity: {selectedNodeData.config.opacity || 30}%
+                  </label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={selectedNodeData.config.opacity || 30}
+                    onChange={(e) => {
+                      updateNode(selectedNodeData.id, {
+                        config: { ...selectedNodeData.config, opacity: parseInt(e.target.value) },
+                      });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="p-3 bg-slate-500/10 border border-slate-500/30 rounded-lg">
+                  <div className="text-xs font-medium mb-2 text-slate-300">💡 Usage</div>
+                  <div className="text-[10px] text-text-subtle space-y-1">
+                    <div>• Visual container to organize nodes</div>
+                    <div>• Position nodes inside to group them</div>
+                    <div>• Resize using corner handle or size inputs</div>
+                    <div>• No functional impact - purely visual</div>
                   </div>
                 </div>
               </>

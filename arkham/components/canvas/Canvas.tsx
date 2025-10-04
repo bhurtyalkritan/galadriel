@@ -64,6 +64,11 @@ export function Canvas() {
         fromNode: connecting.nodeId,
         toNode: nodeId,
         createdAt: new Date().toISOString(),
+        style: {
+          lineType: 'solid' as const,
+          color: 'rgba(111, 163, 255, 0.6)',
+          width: 2,
+        }
       };
       addConnector(newConnector);
     }
@@ -273,6 +278,20 @@ export function Canvas() {
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
             >
               <defs>
+                <marker
+                  id="temp-arrowhead"
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="10"
+                  refY="3"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path
+                    d="M0,0 L0,6 L9,3 z"
+                    fill={(tempLine as any).snapped ? "#10b981" : "#8b5cf6"}
+                  />
+                </marker>
                 <linearGradient id="temp-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.9" />
                   <stop offset="100%" stopColor={(tempLine as any).snapped ? "#10b981" : "#8b5cf6"} stopOpacity="0.9" />
@@ -286,17 +305,18 @@ export function Canvas() {
                 </filter>
               </defs>
               <path
-                d={`M ${connecting.position.x + 200} ${connecting.position.y + 50} Q ${(connecting.position.x + 200 + tempLine.x) / 2} ${connecting.position.y + 50}, ${(connecting.position.x + 200 + tempLine.x) / 2} ${(connecting.position.y + 50 + tempLine.y) / 2} T ${tempLine.x} ${tempLine.y}`}
+                d={`M ${connecting.position.x} ${connecting.position.y} Q ${(connecting.position.x + tempLine.x) / 2} ${connecting.position.y}, ${(connecting.position.x + tempLine.x) / 2} ${(connecting.position.y + tempLine.y) / 2} T ${tempLine.x} ${tempLine.y}`}
                 stroke="url(#temp-gradient)"
-                strokeWidth={(tempLine as any).snapped ? "4" : "3"}
+                strokeWidth={(tempLine as any).snapped ? "3" : "2"}
                 fill="none"
                 filter="url(#temp-glow)"
                 strokeLinecap="round"
+                markerEnd="url(#temp-arrowhead)"
               />
               <circle
                 cx={tempLine.x}
                 cy={tempLine.y}
-                r={(tempLine as any).snapped ? "8" : "6"}
+                r={(tempLine as any).snapped ? "6" : "4"}
                 fill={(tempLine as any).snapped ? "#10b981" : "#8b5cf6"}
                 filter="url(#temp-glow)"
                 className={(tempLine as any).snapped ? "animate-pulse" : ""}
@@ -347,10 +367,12 @@ export function Canvas() {
       {/* Instructions */}
       <div className="absolute bottom-4 right-4 bg-card/80 backdrop-blur-sm border border-border/30 rounded-lg p-3 text-xs text-text-subtle max-w-xs z-10">
         <div className="font-medium mb-1">Navigation:</div>
-        <div>• Mouse wheel: Zoom in/out</div>
-        <div>• Click + drag: Pan around</div>
+        <div>• Mouse wheel / Q/E: Zoom in/out</div>
+        <div>• Click + drag / Arrow keys: Pan</div>
         <div>• Cmd/Ctrl+0: Reset view</div>
         <div>• Cmd/Ctrl+1: Fit all nodes</div>
+        <div>• Cmd/Ctrl+Z: Undo</div>
+        <div>• Cmd/Ctrl+Shift+Z: Redo</div>
         <div>• Cmd/Ctrl+X: Remove selected node</div>
       </div>
     </div>

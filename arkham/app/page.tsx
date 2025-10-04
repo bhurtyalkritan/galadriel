@@ -7,6 +7,8 @@ import { FloatingActionButton } from '@/components/floating/FloatingActionButton
 import { ProjectManager } from '@/components/floating/ProjectManager';
 import { ArtifactsManager } from '@/components/floating/ArtifactsManager';
 import { LoadingScreen } from '@/components/loading/LoadingScreen';
+import { UndoRedo } from '@/components/controls/UndoRedo';
+import { KeyboardControls } from '@/components/controls/KeyboardControls';
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -45,6 +47,8 @@ export default function Home() {
       <FloatingActionButton />
       <ProjectManager />
       <ArtifactsManager />
+      <UndoRedo />
+      <KeyboardControls />
       
       <CollapsibleSidebar 
         open={sidebarOpen} 

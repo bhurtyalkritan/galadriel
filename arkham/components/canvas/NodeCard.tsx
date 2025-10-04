@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Download, Filter, Database, GitBranch, Zap, Globe, Code, Brain, BarChart3, StickyNote, Archive, Sparkles } from 'lucide-react';
+import { Download, Filter, Database, GitBranch, Zap, Globe, Code, Brain, BarChart3, StickyNote, Archive, Sparkles, Square } from 'lucide-react';
 import { Node as NodeType } from '@/types';
 import { cn, generateId } from '@/lib/utils';
 import { useCanvasStore } from '@/store/canvas';
+import { DiagramShape } from './DiagramShape';
 
 interface NodeCardProps {
   node: NodeType;
@@ -30,6 +31,8 @@ const nodeIcons = {
   note: StickyNote,
   knowledge_silo: Archive,
   ai: Sparkles,
+  group: Square,
+  diagram: Square,
 };
 
 const nodeColors = {
@@ -46,6 +49,8 @@ const nodeColors = {
   note: 'border-amber-500',
   knowledge_silo: 'border-indigo-500',
   ai: 'border-violet-500',
+  group: 'border-slate-500',
+  diagram: 'border-blue-500',
 };
 
 export function NodeCard({ 
@@ -492,6 +497,131 @@ export function NodeCard({
           <div className="text-[10px] text-violet-200/60 text-center pt-1">
             Connect knowledge bases for context
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Special rendering for diagram shapes
+  if (node.type === 'diagram') {
+    return (
+      <DiagramShape
+        node={node}
+        selected={selected}
+        connecting={connecting}
+        onSelect={onSelect}
+        onPositionChange={onPositionChange}
+        onStartConnection={onStartConnection}
+        onEndConnection={onEndConnection}
+      />
+    );
+  }
+
+  // Special rendering for group nodes (visual organizer)
+  if (node.type === 'group') {
+    const [isResizing, setIsResizing] = React.useState(false);
+    const [resizeStart, setResizeStart] = React.useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsResizing(true);
+      setResizeStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: node.config.width,
+        height: node.config.height,
+      });
+    };
+
+    const handleResizeMouseMove = React.useCallback((e: MouseEvent) => {
+      if (!isResizing || !resizeStart) return;
+
+      const deltaX = (e.clientX - resizeStart.x) / scale;
+      const deltaY = (e.clientY - resizeStart.y) / scale;
+
+      const newWidth = Math.max(200, resizeStart.width + deltaX);
+      const newHeight = Math.max(150, resizeStart.height + deltaY);
+
+      updateNode(node.id, {
+        config: {
+          ...node.config,
+          width: newWidth,
+          height: newHeight,
+        },
+      });
+    }, [isResizing, resizeStart, scale]);
+
+    const handleResizeMouseUp = React.useCallback(() => {
+      setIsResizing(false);
+      setResizeStart(null);
+    }, []);
+
+    React.useEffect(() => {
+      if (isResizing) {
+        document.addEventListener('mousemove', handleResizeMouseMove);
+        document.addEventListener('mouseup', handleResizeMouseUp);
+        return () => {
+          document.removeEventListener('mousemove', handleResizeMouseMove);
+          document.removeEventListener('mouseup', handleResizeMouseUp);
+        };
+      }
+    }, [isResizing, handleResizeMouseMove, handleResizeMouseUp]);
+
+    const colorMap = {
+      slate: 'border-slate-400',
+      blue: 'border-blue-400',
+      purple: 'border-purple-400',
+      green: 'border-green-400',
+      amber: 'border-amber-400',
+      red: 'border-red-400',
+    };
+
+    const groupColor = colorMap[node.config.color as keyof typeof colorMap] || colorMap.slate;
+
+    return (
+      <div
+        className={cn(
+          'node-card absolute rounded-xl cursor-move transition-all duration-200 border-2 border-dashed',
+          groupColor,
+          selected ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : '',
+          isDragging ? 'cursor-grabbing opacity-60' : ''
+        )}
+        style={{
+          left: node.position.x,
+          top: node.position.y,
+          width: `${node.config.width}px`,
+          height: `${node.config.height}px`,
+          opacity: node.config.opacity / 100,
+          willChange: 'transform',
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        {/* Label */}
+        <div className="absolute -top-6 left-0 px-2 py-1 bg-background/80 backdrop-blur-sm border border-border/30 rounded-md">
+          <input
+            type="text"
+            value={node.config.label || 'Group'}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateNode(node.id, {
+                config: { ...node.config, label: e.target.value },
+              });
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-transparent text-xs font-medium text-text outline-none w-32"
+            placeholder="Group name"
+          />
+        </div>
+
+        {/* Resize handle */}
+        <div
+          className={cn(
+            'absolute bottom-0 right-0 w-6 h-6 cursor-se-resize group',
+            groupColor
+          )}
+          onMouseDown={handleResizeMouseDown}
+        >
+          <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-current opacity-40 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
     );

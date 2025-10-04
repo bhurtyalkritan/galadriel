@@ -39,7 +39,9 @@ export type NodeType =
   | 'visualization'
   | 'note'
   | 'knowledge_silo'
-  | 'ai';
+  | 'ai'
+  | 'group'
+  | 'diagram';
 
 export interface Connector {
   id: string;
@@ -47,6 +49,14 @@ export interface Connector {
   toNode: string;
   mapping?: any;
   createdAt: string;
+  // Connection styling
+  style?: {
+    lineType?: 'solid' | 'dashed' | 'dotted' | 'bidirectional';
+    color?: string;
+    width?: number;
+    label?: string;
+    labelPosition?: 'start' | 'middle' | 'end';
+  };
 }
 
 export interface Workspace {
