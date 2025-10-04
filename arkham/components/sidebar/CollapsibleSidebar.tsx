@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Settings, Database, Table } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Database, MessageSquare } from 'lucide-react';
 import { useCanvasStore } from '@/store/canvas';
 import { Inspector } from '@/components/inspector/Inspector';
 import { FileUpload } from '@/components/upload/FileUpload';
-import { TableView } from '@/components/table/TableView';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 
 interface CollapsibleSidebarProps {
   open: boolean;
@@ -19,7 +19,7 @@ export function CollapsibleSidebar({ open, onToggle }: CollapsibleSidebarProps) 
   const tabs = [
     { id: 'inspector', label: 'Inspector', icon: Settings, component: Inspector },
     { id: 'datasets', label: 'Datasets', icon: Database, component: FileUpload },
-    { id: 'table', label: 'Table', icon: Table, component: TableView },
+    { id: 'chat', label: 'AI Chat', icon: MessageSquare, component: ChatPanel },
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Inspector;

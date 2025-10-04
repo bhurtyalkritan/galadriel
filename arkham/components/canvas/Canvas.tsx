@@ -210,7 +210,7 @@ export function Canvas() {
     } else if (e.key === '1' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       fitToNodes();
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedNode) {
+    } else if (e.key === 'x' && (e.ctrlKey || e.metaKey) && selectedNode) {
       e.preventDefault();
       removeNode(selectedNode);
       setSelectedNode(null);
@@ -259,8 +259,8 @@ export function Canvas() {
               <ConnectorLine
                 key={connector.id}
                 connector={connector}
-                fromPosition={fromNode.position}
-                toPosition={toNode.position}
+                fromNode={fromNode}
+                toNode={toNode}
                 selected={selectedConnector === connector.id}
                 onSelect={setSelectedConnector}
               />
@@ -349,9 +349,9 @@ export function Canvas() {
         <div className="font-medium mb-1">Navigation:</div>
         <div>• Mouse wheel: Zoom in/out</div>
         <div>• Click + drag: Pan around</div>
-        <div>• Ctrl+0: Reset view</div>
-        <div>• Ctrl+1: Fit all nodes</div>
-        <div>• Delete/Backspace: Remove selected node</div>
+        <div>• Cmd/Ctrl+0: Reset view</div>
+        <div>• Cmd/Ctrl+1: Fit all nodes</div>
+        <div>• Cmd/Ctrl+X: Remove selected node</div>
       </div>
     </div>
   );

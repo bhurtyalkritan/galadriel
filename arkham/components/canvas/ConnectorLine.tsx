@@ -1,29 +1,49 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { Connector } from '@/types';
+import { Connector, Node } from '@/types';
 
 interface ConnectorLineProps {
   connector: Connector;
-  fromPosition: { x: number; y: number };
-  toPosition: { x: number; y: number };
+  fromNode: Node;
+  toNode: Node;
   selected: boolean;
   onSelect: (id: string) => void;
 }
 
 export function ConnectorLine({ 
   connector, 
-  fromPosition, 
-  toPosition, 
+  fromNode,
+  toNode,
   selected, 
   onSelect 
 }: ConnectorLineProps) {
   const pathRef = useRef<SVGPathElement>(null);
   
-  const startX = fromPosition.x + 200;
-  const startY = fromPosition.y + 50;
-  const endX = toPosition.x;
-  const endY = toPosition.y + 50;
+  // Calculate node dimensions and port positions based on node type
+  const getNodeDimensions = (node: Node) => {
+    switch (node.type) {
+      case 'knowledge_silo':
+        return { width: 480, height: 320 };
+      case 'ai':
+        return { width: 280, height: 200 };
+      case 'note':
+        return { width: 280, height: 180 };
+      default:
+        return { width: 200, height: 100 };
+    }
+  };
+
+  const fromDimensions = getNodeDimensions(fromNode);
+  const toDimensions = getNodeDimensions(toNode);
+  
+  // Output port is on the right side, middle vertically
+  const startX = fromNode.position.x + fromDimensions.width;
+  const startY = fromNode.position.y + fromDimensions.height / 2;
+  
+  // Input port is on the left side, middle vertically
+  const endX = toNode.position.x;
+  const endY = toNode.position.y + toDimensions.height / 2;
   
   const deltaX = endX - startX;
   const deltaY = endY - startY;

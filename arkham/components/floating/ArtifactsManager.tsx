@@ -8,8 +8,10 @@ interface Artifact {
   id: string;
   name: string;
   description: string;
-  language: 'javascript' | 'python' | 'sql';
-  code: string;
+  language?: 'javascript' | 'python' | 'sql';
+  code?: string;
+  type?: 'code' | 'visualization';
+  data?: any;
   createdAt: string;
 }
 
@@ -36,10 +38,11 @@ export function ArtifactsManager() {
   const createArtifact = () => {
     const newArtifact: Artifact = {
       id: Date.now().toString(),
-      name: name || `artifact${artifacts.length + 1}`,
-      description: description || 'No description',
+      name,
+      description,
       language,
-      code: code || '// Your code here',
+      code,
+      type: 'code',
       createdAt: new Date().toISOString(),
     };
 
@@ -57,7 +60,7 @@ export function ArtifactsManager() {
 
     const updatedArtifacts = artifacts.map(a => 
       a.id === selectedArtifact.id 
-        ? { ...a, name, description, language, code }
+        ? { ...a, name, description, language, code, type: 'code' as const }
         : a
     );
     
@@ -90,8 +93,8 @@ export function ArtifactsManager() {
     setSelectedArtifact(artifact);
     setName(artifact.name);
     setDescription(artifact.description);
-    setLanguage(artifact.language);
-    setCode(artifact.code);
+    setLanguage(artifact.language || 'javascript');
+    setCode(artifact.code || '');
     setShowCreateDialog(true);
   };
 
@@ -111,7 +114,7 @@ export function ArtifactsManager() {
             <div className="p-4 border-b border-border/30 flex items-center justify-between">
               <h2 className="text-lg font-medium flex items-center gap-2">
                 <Package size={20} className="text-purple-400" />
-                Code Artifacts
+                Artifacts
               </h2>
               <button
                 onClick={() => setIsOpen(false)}
@@ -219,9 +222,15 @@ export function ArtifactsManager() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-medium text-sm font-mono">{artifact.name}</h3>
-                            <span className="text-[10px] px-2 py-0.5 bg-purple-400/10 text-purple-400 rounded">
-                              {artifact.language}
-                            </span>
+                            {artifact.type === 'visualization' ? (
+                              <span className="text-[10px] px-2 py-0.5 bg-emerald-400/10 text-emerald-400 rounded">
+                                visualization
+                              </span>
+                            ) : artifact.language && (
+                              <span className="text-[10px] px-2 py-0.5 bg-purple-400/10 text-purple-400 rounded">
+                                {artifact.language}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-text-subtle mb-1">{artifact.description}</p>
                           <div className="text-[10px] text-text-subtle">
@@ -230,9 +239,10 @@ export function ArtifactsManager() {
                         </div>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => copyToClipboard(artifact.code)}
+                            onClick={() => artifact.code && copyToClipboard(artifact.code)}
                             className="text-accent hover:text-accent/80 p-1"
                             title="Copy code"
+                            disabled={!artifact.code}
                           >
                             <Copy size={14} />
                           </button>
@@ -254,7 +264,17 @@ export function ArtifactsManager() {
                       </div>
                       <div className="bg-background/50 rounded p-2 border border-border/10">
                         <pre className="text-[10px] font-mono text-text-subtle overflow-x-auto">
-                          {artifact.code.substring(0, 200)}{artifact.code.length > 200 ? '...' : ''}
+                                                  <div className="text-xs text-zinc-500 font-mono overflow-hidden">
+                          {artifact.type === 'visualization' ? (
+                            <div className="text-emerald-400">📊 Visualization: {artifact.data?.chartType || 'chart'}</div>
+                          ) : artifact.code ? (
+                            <>
+                              {artifact.code.substring(0, 200)}{artifact.code.length > 200 ? '...' : ''}
+                            </>
+                          ) : (
+                            <span className="text-zinc-600">No code</span>
+                          )}
+                        </div>
                         </pre>
                       </div>
                     </div>

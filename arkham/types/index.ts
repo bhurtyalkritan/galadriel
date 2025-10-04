@@ -34,7 +34,12 @@ export type NodeType =
   | 'api' 
   | 'enrich' 
   | 'code'
-  | 'mapview';
+  | 'mapview'
+  | 'ml'
+  | 'visualization'
+  | 'note'
+  | 'knowledge_silo'
+  | 'ai';
 
 export interface Connector {
   id: string;
