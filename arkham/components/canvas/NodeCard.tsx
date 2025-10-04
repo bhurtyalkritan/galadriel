@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Download, Filter, Database, GitBranch, Zap, Globe } from 'lucide-react';
+import { Download, Filter, Database, GitBranch, Zap, Globe, Code } from 'lucide-react';
 import { Node as NodeType } from '@/types';
 import { cn } from '@/lib/utils';
 import { useCanvasStore } from '@/store/canvas';
@@ -23,6 +23,7 @@ const nodeIcons = {
   if: GitBranch,
   api: Zap,
   enrich: Download,
+  code: Code,
   mapview: Globe,
 };
 
@@ -33,6 +34,7 @@ const nodeColors = {
   if: 'border-purple-500',
   api: 'border-red-500',
   enrich: 'border-orange-500',
+  code: 'border-cyan-500',
   mapview: 'border-cyan-500',
 };
 
@@ -139,23 +141,51 @@ export function NodeCard({
       }}
       onMouseDown={handleMouseDown}
     >
-      {/* Input Port */}
+      {/* Input Ports */}
       {node.inputs && node.inputs.length > 0 && (
-        <button
-          className="connection-port absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-md hover:scale-150 hover:ring-2 hover:ring-green-400 transition-all cursor-pointer z-20"
-          onMouseUp={handleInputPortMouseUp}
-          onMouseEnter={handleInputPortMouseEnter}
-          title="Input Port"
-        />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+          {node.inputs.map((input, index) => {
+            const offsetY = node.inputs.length === 1 ? 0 : (index - (node.inputs.length - 1) / 2) * 30;
+            return (
+              <div key={input} className="relative" style={{ transform: `translateY(${offsetY}px)` }}>
+                <button
+                  className="connection-port w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-md hover:scale-150 hover:ring-2 hover:ring-green-400 transition-all cursor-pointer z-20 -translate-x-1/2"
+                  onMouseUp={handleInputPortMouseUp}
+                  onMouseEnter={handleInputPortMouseEnter}
+                  title={`Input: ${input}`}
+                />
+                {node.inputs.length > 1 && (
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-text-subtle whitespace-nowrap">
+                    {input}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {/* Output Port */}
+      {/* Output Ports */}
       {node.outputs && node.outputs.length > 0 && (
-        <button
-          className="connection-port absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-md hover:scale-150 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer z-20"
-          onMouseDown={handleOutputPortMouseDown}
-          title="Output Port - Click and drag to connect"
-        />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+          {node.outputs.map((output, index) => {
+            const offsetY = node.outputs.length === 1 ? 0 : (index - (node.outputs.length - 1) / 2) * 30;
+            return (
+              <div key={output} className="relative" style={{ transform: `translateY(${offsetY}px)` }}>
+                <button
+                  className="connection-port w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-md hover:scale-150 hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer z-20 translate-x-1/2"
+                  onMouseDown={handleOutputPortMouseDown}
+                  title={`Output: ${output}`}
+                />
+                {node.outputs.length > 1 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-subtle whitespace-nowrap">
+                    {output}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <div className="flex items-center gap-2 mb-2">
@@ -165,19 +195,61 @@ export function NodeCard({
 
       {node.config && Object.keys(node.config).length > 0 && (
         <div className="text-xs text-text-subtle space-y-1">
-          {node.type === 'dataset' && node.config.name && (
+          {node.type === 'dataset' && (
             <>
-              <div className="font-medium">{node.config.name}</div>
-              {node.config.rows && <div>{node.config.rows.toLocaleString()} rows</div>}
+              {node.config.name && <div className="font-medium truncate">{node.config.name}</div>}
+              {node.config.rows > 0 && <div>{node.config.rows.toLocaleString()} rows</div>}
+              {node.config.schema && node.config.schema.length > 0 && (
+                <div className="text-[10px] opacity-60">{node.config.schema.length} fields</div>
+              )}
             </>
           )}
-          {node.type === 'filter' && node.config.condition && (
-            <div className="font-mono">{node.config.condition}</div>
+          {node.type === 'filter' && (
+            <>
+              {node.config.mode && <div className="text-[10px] opacity-60">{node.config.mode}</div>}
+              {node.config.condition && <div className="font-mono truncate">{node.config.condition}</div>}
+            </>
           )}
-          {node.type === 'api' && node.config.endpoint && (
+          {node.type === 'join' && (
+            <>
+              <div className="text-[10px] opacity-60">{node.config.joinType || 'inner'} join</div>
+              {node.config.leftKey && node.config.rightKey && (
+                <div className="font-mono text-[10px] truncate">
+                  {node.config.leftKey} = {node.config.rightKey}
+                </div>
+              )}
+            </>
+          )}
+          {node.type === 'if' && (
+            <>
+              {node.config.conditions && node.config.conditions.length > 0 && (
+                <>
+                  <div className="text-[10px] opacity-60">{node.config.conditions.length} condition(s)</div>
+                  <div className="font-mono truncate text-[10px]">{node.config.conditions[0].expression || 'empty'}</div>
+                </>
+              )}
+            </>
+          )}
+          {node.type === 'api' && (
             <>
               <div className="font-medium">{node.config.method || 'GET'}</div>
-              <div className="truncate">{node.config.endpoint}</div>
+              {node.config.endpoint && <div className="truncate text-[10px]">{node.config.endpoint}</div>}
+            </>
+          )}
+          {node.type === 'enrich' && (
+            <>
+              <div className="text-[10px] opacity-60">{node.config.enrichType || 'lookup'}</div>
+              {node.config.sourceField && (
+                <div className="font-mono text-[10px] truncate">{node.config.sourceField}</div>
+              )}
+            </>
+          )}
+          {node.type === 'code' && (
+            <>
+              <div className="text-[10px] opacity-60">{node.config.language || 'javascript'}</div>
+              <div className="font-mono text-[10px] opacity-60">
+                {node.config.blocks?.length > 0 ? `${node.config.blocks.length} blocks` : 'function transform'}
+              </div>
             </>
           )}
         </div>

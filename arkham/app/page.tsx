@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { Canvas } from '@/components/canvas/Canvas';
 import { CollapsibleSidebar } from '@/components/sidebar/CollapsibleSidebar';
 import { FloatingActionButton } from '@/components/floating/FloatingActionButton';
+import { ProjectManager } from '@/components/floating/ProjectManager';
+import { ArtifactsManager } from '@/components/floating/ArtifactsManager';
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,6 +28,8 @@ export default function Home() {
       </div>
       
       <FloatingActionButton />
+      <ProjectManager />
+      <ArtifactsManager />
       
       <CollapsibleSidebar 
         open={sidebarOpen} 

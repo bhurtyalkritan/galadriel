@@ -33,6 +33,7 @@ export type NodeType =
   | 'if' 
   | 'api' 
   | 'enrich' 
+  | 'code'
   | 'mapview';
 
 export interface Connector {

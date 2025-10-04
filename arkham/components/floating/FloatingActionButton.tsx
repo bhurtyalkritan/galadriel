@@ -16,38 +16,97 @@ export function FloatingActionButton() {
     { type: 'if', icon: GitBranch, label: 'If/Then', color: 'text-purple-400' },
     { type: 'api', icon: Zap, label: 'API', color: 'text-red-400' },
     { type: 'enrich', icon: Download, label: 'Enrich', color: 'text-orange-400' },
+    { type: 'code', icon: Globe, label: 'Code Canvas', color: 'text-cyan-400' },
   ];
 
   const handleAddNode = (type: string) => {
     let config = {};
-    let outputs = [];
+    let inputs: string[] = [];
+    let outputs: string[] = [];
     
-    if (type === 'dataset') {
-      config = { 
-        name: `Sample Dataset ${Math.floor(Math.random() * 100)}`,
-        rows: Math.floor(Math.random() * 10000) + 1000,
-        schema: [
-          { name: 'id', type: 'number' },
-          { name: 'name', type: 'string' },
-          { name: 'value', type: 'number' }
-        ]
-      };
-      outputs = ['data_out'];
-    } else if (type === 'filter') {
-      config = { condition: 'value > 0' };
-    } else if (type === 'api') {
-      config = { 
-        endpoint: 'https://api.example.com/webhook',
-        method: 'POST'
-      };
+    switch (type) {
+      case 'dataset':
+        config = { 
+          name: `Dataset ${nodes.length + 1}`,
+          rows: 1000,
+          schema: [
+            { name: 'id', type: 'number', nullable: false },
+            { name: 'name', type: 'string', nullable: false },
+            { name: 'value', type: 'number', nullable: true }
+          ]
+        };
+        inputs = [];
+        outputs = ['data'];
+        break;
+        
+      case 'filter':
+        config = { 
+          condition: '',
+          mode: 'include' // include or exclude
+        };
+        inputs = ['data'];
+        outputs = ['filtered'];
+        break;
+        
+      case 'join':
+        config = { 
+          joinType: 'inner', // inner, left, right, full
+          leftKey: '',
+          rightKey: ''
+        };
+        inputs = ['left', 'right'];
+        outputs = ['joined'];
+        break;
+        
+      case 'if':
+        config = { 
+          conditions: [
+            { expression: '', label: 'condition_1' }
+          ],
+          defaultOutput: 'else'
+        };
+        inputs = ['data'];
+        outputs = ['condition_1', 'else'];
+        break;
+        
+      case 'api':
+        config = { 
+          endpoint: '',
+          method: 'POST',
+          headers: {},
+          bodyTemplate: ''
+        };
+        inputs = ['data'];
+        outputs = ['response'];
+        break;
+        
+      case 'enrich':
+        config = { 
+          enrichType: 'lookup', // lookup, calculate, geocode
+          sourceField: '',
+          targetField: ''
+        };
+        inputs = ['data'];
+        outputs = ['enriched'];
+        break;
+        
+      case 'code':
+        config = { 
+          language: 'javascript',
+          code: '// Transform your data\nfunction transform(input) {\n  return input;\n}',
+          blocks: []
+        };
+        inputs = ['input'];
+        outputs = ['output'];
+        break;
     }
     
     const newNode = {
       id: generateId(),
       type: type as any,
       config,
-      inputs: type === 'dataset' ? [] : ['data_in'],
-      outputs: type === 'api' ? [] : ['data_out'],
+      inputs,
+      outputs,
       position: { 
         x: 400 + (nodes.length * 50),
         y: 300 + (nodes.length * 50)
